@@ -17,7 +17,7 @@ extern "C" {
  *      TYPEDEFS
  **********************/
 typedef struct {
-    int32_t temperature;
+    int32_t temperature_x10;
     uint32_t bat_voltage_mv;
     uint32_t vbus_voltage_mv;
     uint32_t system_voltage_mv;

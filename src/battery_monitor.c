@@ -4,7 +4,7 @@
 
 #include "battery_monitor.h"
 
-#include "lvgl/lvgl.h"
+#include "lvgl.h"
 
 #define PAGE_COUNT 2U
 
@@ -29,8 +29,10 @@ typedef struct {
 
 static battery_monitor_ctx_t g_ctx;
 
+static void on_gesture(lv_event_t * e);
+
 static const battery_monitor_data_t g_default_data = {
-    .temperature = 26,
+    .temperature_x10 = 260,
     .bat_voltage_mv = 3850U,
     .vbus_voltage_mv = 5000U,
     .system_voltage_mv = 3300U,
@@ -83,14 +85,14 @@ static lv_obj_t * create_row(lv_obj_t * parent, const char * name)
     lv_obj_t * name_label = lv_label_create(row);
     lv_label_set_text(name_label, name);
     lv_label_set_long_mode(name_label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_width(name_label, 158);
+    lv_obj_set_width(name_label, 142);
     set_label_font(name_label, &lv_font_montserrat_14, lv_color_hex(0xAEB8C6));
     lv_obj_add_flag(name_label, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     lv_obj_t * value_label = lv_label_create(row);
     lv_label_set_text(value_label, "--");
     lv_label_set_long_mode(value_label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_width(value_label, 100);
+    lv_obj_set_width(value_label, 170);
     lv_obj_set_style_text_align(value_label, LV_TEXT_ALIGN_RIGHT, 0);
     set_label_font(value_label, &lv_font_montserrat_18, lv_color_hex(0xF7FAFF));
     lv_obj_add_flag(value_label, LV_OBJ_FLAG_GESTURE_BUBBLE);
@@ -100,7 +102,9 @@ static lv_obj_t * create_row(lv_obj_t * parent, const char * name)
 
 static void refresh_data_labels(void)
 {
-    lv_label_set_text_fmt(g_ctx.temperature_value, "%ld", (long)g_ctx.data.temperature);
+    int32_t temp_abs_x10 = g_ctx.data.temperature_x10 < 0 ? -g_ctx.data.temperature_x10 : g_ctx.data.temperature_x10;
+    lv_label_set_text_fmt(g_ctx.temperature_value, "%s%ld.%ld", g_ctx.data.temperature_x10 < 0 ? "-" : "",
+                          (long)(temp_abs_x10 / 10), (long)(temp_abs_x10 % 10));
     lv_label_set_text_fmt(g_ctx.bat_voltage_value, "%lu", (unsigned long)g_ctx.data.bat_voltage_mv);
     lv_label_set_text_fmt(g_ctx.vbus_voltage_value, "%lu", (unsigned long)g_ctx.data.vbus_voltage_mv);
     lv_label_set_text_fmt(g_ctx.system_voltage_value, "%lu", (unsigned long)g_ctx.data.system_voltage_mv);
@@ -148,9 +152,11 @@ static void on_gesture(lv_event_t * e)
     lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
     if(dir == LV_DIR_LEFT) {
         switch_page(1);
+        lv_event_stop_bubbling(e);
     }
     else if(dir == LV_DIR_RIGHT) {
         switch_page(-1);
+        lv_event_stop_bubbling(e);
     }
 }
 
@@ -183,6 +189,7 @@ void battery_monitor_ui_init(void)
     lv_obj_set_style_bg_color(root, lv_color_hex(0x0D1118), 0);
     lv_obj_set_style_bg_opa(root, LV_OPA_COVER, 0);
     lv_obj_add_flag(root, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_add_event_cb(root, on_gesture, LV_EVENT_GESTURE, NULL);
 
     g_ctx.page_title = lv_label_create(root);
     set_label_font(g_ctx.page_title, &lv_font_montserrat_20, lv_color_hex(0xFFFFFF));
@@ -190,6 +197,7 @@ void battery_monitor_ui_init(void)
     lv_obj_add_flag(g_ctx.page_title, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     g_ctx.page_cont[0] = create_page(root);
+    lv_obj_add_event_cb(g_ctx.page_cont[0], on_gesture, LV_EVENT_GESTURE, NULL);
     g_ctx.temperature_value = create_row(g_ctx.page_cont[0], "temperature");
     g_ctx.bat_voltage_value = create_row(g_ctx.page_cont[0], "batVoltage (mV)");
     g_ctx.vbus_voltage_value = create_row(g_ctx.page_cont[0], "vbusVoltage (mV)");
@@ -197,6 +205,7 @@ void battery_monitor_ui_init(void)
     g_ctx.bat_percent_value = create_row(g_ctx.page_cont[0], "batPercent %");
 
     g_ctx.page_cont[1] = create_page(root);
+    lv_obj_add_event_cb(g_ctx.page_cont[1], on_gesture, LV_EVENT_GESTURE, NULL);
     g_ctx.is_charging_value = create_row(g_ctx.page_cont[1], "isCharging");
     g_ctx.is_discharge_value = create_row(g_ctx.page_cont[1], "is Discharge");
     g_ctx.is_standby_value = create_row(g_ctx.page_cont[1], "isStandby");
