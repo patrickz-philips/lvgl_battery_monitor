@@ -23,6 +23,7 @@ typedef struct {
     lv_obj_t * is_vbus_in_value;
     lv_obj_t * is_vbus_good_value;
     lv_obj_t * charge_status_value;
+    lv_obj_t * last_input_value;
     uint8_t page_index;
     battery_monitor_data_t data;
 } battery_monitor_ctx_t;
@@ -49,6 +50,30 @@ static void set_label_font(lv_obj_t * label, const lv_font_t * font, lv_color_t 
 {
     lv_obj_set_style_text_font(label, font, 0);
     lv_obj_set_style_text_color(label, color, 0);
+}
+
+static const char * button_source_text(battery_monitor_button_source_t source)
+{
+    switch(source) {
+        case BATTERY_MONITOR_BUTTON_SOURCE_GPIO0:
+            return "GPIO0";
+        case BATTERY_MONITOR_BUTTON_SOURCE_PWRON:
+            return "PWRON";
+        default:
+            return "Unknown";
+    }
+}
+
+static const char * button_press_text(battery_monitor_button_press_t press_type)
+{
+    switch(press_type) {
+        case BATTERY_MONITOR_BUTTON_PRESS_SHORT:
+            return "short";
+        case BATTERY_MONITOR_BUTTON_PRESS_LONG:
+            return "long";
+        default:
+            return "unknown";
+    }
 }
 
 static lv_obj_t * create_page(lv_obj_t * parent)
@@ -172,6 +197,15 @@ void battery_monitor_set_data(const battery_monitor_data_t * data)
     }
 }
 
+void battery_monitor_handle_button_event(battery_monitor_button_source_t source, battery_monitor_button_press_t press_type)
+{
+    if(g_ctx.last_input_value == NULL) {
+        return;
+    }
+
+    lv_label_set_text_fmt(g_ctx.last_input_value, "%s %s", button_source_text(source), button_press_text(press_type));
+}
+
 void battery_monitor_ui_init(void)
 {
     lv_obj_t * scr = lv_screen_active();
@@ -199,7 +233,7 @@ void battery_monitor_ui_init(void)
     g_ctx.page_cont[0] = create_page(root);
     lv_obj_add_event_cb(g_ctx.page_cont[0], on_gesture, LV_EVENT_GESTURE, NULL);
     g_ctx.temperature_value = create_row(g_ctx.page_cont[0], "temperature");
-    g_ctx.bat_voltage_value = create_row(g_ctx.page_cont[0], "batVoltage (mV)");
+    g_ctx.bat_voltage_value = create_row(g_ctx.page_cont[0], "batVoltage (mV)"); 
     g_ctx.vbus_voltage_value = create_row(g_ctx.page_cont[0], "vbusVoltage (mV)");
     g_ctx.system_voltage_value = create_row(g_ctx.page_cont[0], "systemVoltage (mV)");
     g_ctx.bat_percent_value = create_row(g_ctx.page_cont[0], "batPercent %");
@@ -212,6 +246,7 @@ void battery_monitor_ui_init(void)
     g_ctx.is_vbus_in_value = create_row(g_ctx.page_cont[1], "isVbusIn");
     g_ctx.is_vbus_good_value = create_row(g_ctx.page_cont[1], "isVbusGood");
     g_ctx.charge_status_value = create_row(g_ctx.page_cont[1], "Charge status");
+    g_ctx.last_input_value = create_row(g_ctx.page_cont[1], "lastInput");
 
     g_ctx.page_indicator = lv_label_create(root);
     set_label_font(g_ctx.page_indicator, &lv_font_montserrat_14, lv_color_hex(0x7CD7FF));
@@ -220,5 +255,6 @@ void battery_monitor_ui_init(void)
 
     g_ctx.page_index = 0U;
     battery_monitor_set_data(&g_default_data);
+    lv_label_set_text(g_ctx.last_input_value, "None");
     update_page_visibility();
 }

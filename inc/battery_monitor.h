@@ -30,11 +30,22 @@ typedef struct {
     const char * charge_status;
 } battery_monitor_data_t;
 
+typedef enum {
+    BATTERY_MONITOR_BUTTON_SOURCE_GPIO0 = 0,
+    BATTERY_MONITOR_BUTTON_SOURCE_PWRON,
+} battery_monitor_button_source_t;
+
+typedef enum {
+    BATTERY_MONITOR_BUTTON_PRESS_SHORT = 0,
+    BATTERY_MONITOR_BUTTON_PRESS_LONG,
+} battery_monitor_button_press_t;
+
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
 void battery_monitor_ui_init(void);
 void battery_monitor_set_data(const battery_monitor_data_t * data);
+void battery_monitor_handle_button_event(battery_monitor_button_source_t source, battery_monitor_button_press_t press_type);
 
 #ifdef __cplusplus
 } /*extern "C"*/
